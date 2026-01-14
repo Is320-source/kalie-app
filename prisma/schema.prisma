@@ -1,0 +1,276 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["clientExtensions"] // Adicione esta linha
+  output          = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  firstName    String
+  lastName     String
+  email        String        @unique
+  password     String
+  postLikes    PostLike[]    @relation("UserLikes") // <--- adiciona isso
+  commentLikes CommentLike[] @relation("UserCommentLikes")
+
+  avatar              String?
+  coverPhoto          String?
+  bio                 String?
+  gender              String?
+  birthDate           DateTime?
+  isOnline            Boolean      @default(false)
+  lastSeen            DateTime?
+  
+  // Recuperação de senha
+  resetPasswordToken  String?
+  resetPasswordExpires DateTime?
+  
+  // Relationships - CORRIGIDO: adicionadas as relações bidirecionais
+  friendshipsAsUser   Friendship[] @relation("UserFriends")
+  friendshipsAsFriend Friendship[] @relation("FriendOf")
+
+  friendIds              String[]        @db.ObjectId
+  posts                  Post[]
+  comments               Comment[]
+  postId                 String?         @db.ObjectId
+  commentId              String?         @db.ObjectId
+  //likes                 Like[]
+  messagesSent           Message[]       @relation("sender")
+  messagesReceived       Message[]       @relation("receiver")
+  notifications          Notification[]  @relation("NotificationReceiver")
+  notificationsSent      Notification[]  @relation("NotificationSender")
+  stories                Story[]
+  shares                 Share[]
+  mentionedInPostIds     String[]        @db.ObjectId
+  viewedStoryIds         String[]        @db.ObjectId
+  friendRequestsSent     FriendRequest[] @relation("FriendRequestSender")
+  friendRequestsReceived FriendRequest[] @relation("FriendRequestReceiver")
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  @@index([isOnline])
+}
+
+// Deve estar definido como:
+model Friendship {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  user   User   @relation("UserFriends", fields: [userId], references: [id])
+  userId String @db.ObjectId
+
+  friend   User   @relation("FriendOf", fields: [friendId], references: [id])
+  friendId String @db.ObjectId
+
+  status    String   @default("accepted") // accepted, pending, blocked
+  createdAt DateTime @default(now())
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+}
+
+model Post {
+  id       String     @id @default(auto()) @map("_id") @db.ObjectId
+  type     String     @default("text") // text, image, video, audio, poll, event, announcement
+  content  String
+  image    String?
+  video    String?
+  audio    String?
+  location String?
+  feeling  String?
+  privacy  String     @default("public") // public, friends, private
+  author   User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes    PostLike[] @relation("PostLikes")
+
+  // Poll fields
+  pollQuestion String?
+  pollOptions  Json? // [{ id, text, votes: [userId] }]
+  pollDuration DateTime?
+  pollMultiple Boolean? @default(false)
+
+  // Event fields
+  eventTitle       String?
+  eventDate        DateTime?
+  eventLocation    String?
+  eventDescription String?
+  eventImage       String?
+  eventInterested  String[] @db.ObjectId
+  eventGoing       String[] @db.ObjectId
+
+  // Announcement fields
+  announcementTitle    String?
+  announcementPrice    Float?
+  announcementCategory String?
+  announcementImages   String[]
+  announcementLocation String?
+  announcementContact  String?
+  announcementStatus   String? // available, sold, reserved
+
+  authorId      String         @db.ObjectId
+  comments      Comment[]
+  shares        Share[]
+  notifications Notification[]
+  hashtags      String[]
+  mentionIds    String[]       @db.ObjectId
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([privacy])
+  @@index([type])
+}
+
+model Comment {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  content       String
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId      String         @db.ObjectId
+  post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId        String         @db.ObjectId
+  //likes         Like[]
+  likes         CommentLike[]  @relation("CommentLikes") // <--- lado inverso de CommentLike
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+
+  @@index([postId])
+  @@index([authorId])
+}
+
+/**
+ * model Like {
+ * id        String   @id @default(auto()) @map("_id") @db.ObjectId
+ * user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ * userId    String   @db.ObjectId
+ * post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+ * postId    String?  @db.ObjectId
+ * comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+ * commentId String?  @db.ObjectId
+ * type      String   @default("like") // like, love, haha, wow, sad, angry
+ * createdAt DateTime @default(now())
+ * @@unique([userId, postId])
+ * @@unique([userId, commentId])
+ * @@index([userId])
+ * @@index([postId])
+ * @@index([commentId])
+ * }
+ */
+
+model PostLike {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation("UserLikes", fields: [userId], references: [id])
+  postId    String?  @db.ObjectId
+  post      Post?    @relation("PostLikes", fields: [postId], references: [id])
+  type      String   @default("like")
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model CommentLike {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation("UserCommentLikes", fields: [userId], references: [id])
+  commentId String   @db.ObjectId
+  comment   Comment  @relation("CommentLikes", fields: [commentId], references: [id])
+  type      String   @default("like")
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
+}
+
+model Share {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.ObjectId
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+}
+
+model Message {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  content    String
+  image      String?
+  sender     User     @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId   String   @db.ObjectId
+  receiver   User     @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId String   @db.ObjectId
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([senderId, receiverId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  type       String // like, comment, friend_request, message, mention
+  message    String
+  fromUser   User     @relation("NotificationSender", fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromUserId String   @db.ObjectId
+  toUser     User     @relation("NotificationReceiver", fields: [toUserId], references: [id], onDelete: Cascade)
+  toUserId   String   @db.ObjectId
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId     String?  @db.ObjectId
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId  String?  @db.ObjectId
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([toUserId, read])
+  @@index([fromUserId])
+}
+
+model Story {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String   @default("image") // image, video, text, audio
+  image     String?
+  video     String?
+  text      String?
+  audio     String?
+  
+  // Text story styling
+  textColor       String?
+  backgroundColor String?
+  fontFamily      String?
+  
+  // Multiple stories sequence
+  sequenceId String? // Group multiple stories together
+  order      Int?    // Order in sequence
+  duration   Int     @default(5) // Duration in seconds
+  
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String   @db.ObjectId
+  expiresAt DateTime
+  viewerIds String[] @db.ObjectId
+  createdAt DateTime @default(now())
+
+  @@index([authorId])
+  @@index([expiresAt])
+  @@index([sequenceId])
+}
+
+model FriendRequest {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  fromUser   User     @relation("FriendRequestSender", fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromUserId String   @db.ObjectId
+  toUser     User     @relation("FriendRequestReceiver", fields: [toUserId], references: [id], onDelete: Cascade)
+  toUserId   String   @db.ObjectId
+  status     String   @default("pending") // pending, accepted, rejected
+  createdAt  DateTime @default(now())
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId])
+  @@index([fromUserId])
+}
