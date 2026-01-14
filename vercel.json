@@ -1,3 +1,16 @@
-{"rewrites": [{"source": "/(.*)",  "destination": "/"}],
-"buildCommand": null
+
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "public/server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "public/server.js"
+    }
+  ]
 }
