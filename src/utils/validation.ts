@@ -7,7 +7,13 @@ export const registerSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
   gender: z.string().optional(),
-  birthDate: z.string().optional()
+  birthDate: z
+  .string()
+  .optional()
+  .refine(
+    (val) => !val || !isNaN(new Date(val).getTime()),
+    { message: "Data de nascimento inválida" }
+  )
 });
 
 export const loginSchema = z.object({
