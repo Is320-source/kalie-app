@@ -8,7 +8,7 @@
     "dev": "nodemon --exec \"ts-node --project tsconfig.server.json\" src/server.ts",
     "startisi": "nodemon start.js",
     "build": "tsc",
-    "start": "node public/server.js",
+    "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
