@@ -48,7 +48,7 @@ export const sendPasswordResetEmail = async (
           </p>
 
           <p style="font-size: 12px; color: #aaa; margin-top: 40px;">
-            Se você não solicitou este código, ignore este email.
+            Se você não solicitou este código, ignore este email...
           </p>
         </div>
       `,
