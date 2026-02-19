@@ -9,7 +9,10 @@ exports.registerSchema = zod_1.z.object({
     email: zod_1.z.string().email('Email inválido'),
     password: zod_1.z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
     gender: zod_1.z.string().optional(),
-    birthDate: zod_1.z.string().optional()
+    birthDate: zod_1.z
+        .string()
+        .optional()
+        .refine((val) => !val || !isNaN(new Date(val).getTime()), { message: "Data de nascimento inválida" })
 });
 exports.loginSchema = zod_1.z.object({
     email: zod_1.z.string().email('Email inválido'),
